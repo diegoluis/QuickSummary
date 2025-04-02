@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>QuickSummary Options</title>
+  <style>
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #333;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      font-family: inherit;
+    }
+    button {
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    button:hover {
+      background-color: #3367d6;
+    }
+    .status {
+      margin-top: 16px;
+      padding: 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .instruction {
+      background-color: #f8f9fa;
+      padding: 16px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      border-left: 4px solid #4285f4;
+    }
+    .instruction h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    .instruction ol {
+      margin-bottom: 0;
+      padding-left: 20px;
+    }
+    /* Add to the style section in options.html */
+textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.secondary-button {
+  background-color: #f1f3f4;
+  color: #202124;
+  border: 1px solid #dadce0;
+  margin-top: 8px;
+}
+
+.secondary-button:hover {
+  background-color: #e8eaed;
+}
+
+.tooltip {
+  cursor: help;
+  color: #4285f4;
+}
+
+.header-with-tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab.active {
+  border-bottom: 2px solid #4285f4;
+  color: #4285f4;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+  </style>
+</head>
+<body>
+  <h1>QuickSummary Options</h1>
+  
+  <div class="instruction">
+    <h2>How to Get Your OpenAI API Key</h2>
+    <ol>
+      <li>Go to <a href="https://platform.openai.com/account/api-keys" target="_blank">OpenAI API Keys</a></li>
+      <li>Sign in or create an account</li>
+      <li>Create a new API key</li>
+      <li>Copy the key and paste it below</li>
+    </ol>
+  </div>
+  
+  <div class="form-group">
+    <label for="apiKey">OpenAI API Key:</label>
+    <input type="text" id="apiKey" placeholder="sk-...">
+  </div>
+  
+  <div class="form-group">
+    <label for="model">OpenAI Model:</label>
+    <select id="model">
+      <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Faster, cheaper)</option>
+      <option value="gpt-4">GPT-4 (More accurate, slower)</option>
+      <option value="gpt-4-turbo">GPT-4 Turbo (Balance of speed and quality)</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label for="summaryLength">Summary Length:</label>
+    <select id="summaryLength">
+      <option value="short">Short (100 words)</option>
+      <option value="medium" selected>Medium (150 words)</option>
+      <option value="long">Long (250+ words)</option>
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label for="summaryStyle">Summary Style:</label>
+    <select id="summaryStyle">
+      <option value="concise">Concise</option>
+      <option value="detailed" selected>Balanced</option>
+      <option value="analytical">Analytical</option>
+      <option value="simple">Simple Language</option>
+    </select>
+  </div>
+  
+  <div class="form-group">
+    <label for="customPrompt">
+      Custom System Prompt (Advanced):
+      <span class="tooltip" title="Use {content} as placeholder for the webpage content">ℹ️</span>
+    </label>
+    <textarea id="customPrompt" rows="6" placeholder="Leave blank to use default prompt based on settings above"></textarea>
+    <button id="resetPrompt" class="secondary-button">Reset to Default</button>
+  </div>
+  
+  <button id="save">Save Settings</button>
+  <div id="status" class="status"></div>
+  
+  <script src="options.js"></script>
+</body>
+</html>
