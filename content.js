@@ -1,241 +1,184 @@
-// Listen for messages from the background script
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+// Cache for storing summaries
+let summaryCache = {
+  data: null,
+  timestamp: null,
+  url: null
+};
+
+// Listen for messages from the popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "showSummary") {
     showSummaryModal();
   }
 });
 
-// Function to extract main content from the page
-function extractMainContent() {
-  // Try to find main content containers
-  const possibleContainers = [
-    document.querySelector('article'),
-    document.querySelector('main'),
-    document.querySelector('.content'),
-    document.querySelector('.post'),
-    document.querySelector('.article')
-  ];
-  
-  // Use the first valid container or fallback to body
-  const container = possibleContainers.find(el => el !== null) || document.body;
-  
-  // Extract text
-  let text = container.innerText;
-  
-  // Remove extra whitespace
-  text = text.replace(/\s+/g, ' ').trim();
-  
-  return text;
-}
-
-// Function to inject the modal
+// Function to show the summary modal
 function showSummaryModal() {
-  // Check if modal already exists - if so, remove it
+  // Check if modal already exists
   const existingModal = document.getElementById('quicksummary-modal-container');
   if (existingModal) {
-    document.body.removeChild(existingModal);
+    existingModal.remove();
   }
-  
-  // Create a container for the modal
+
+  // Create modal container
   const modalContainer = document.createElement('div');
   modalContainer.id = 'quicksummary-modal-container';
   modalContainer.style.cssText = `
     position: fixed;
     top: 0;
-    left: 0;
     right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    width: 25vw;
+    height: 100vh;
+    z-index: 999999;
+    pointer-events: none;
+    box-shadow: -1px 0 0 #e9ecef;
   `;
-  
-  // Create the modal itself
-  const modal = document.createElement('div');
-  modal.id = 'quicksummary-modal';
-  modal.style.cssText = `
-    background-color: white;
-    width: 80%;
-    max-width: 700px;
-    border-radius: 8px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    max-height: 80vh;
+
+  // Create resize handle
+  const resizeHandle = document.createElement('div');
+  resizeHandle.id = 'quicksummary-resize-handle';
+  resizeHandle.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    cursor: col-resize;
+    pointer-events: auto;
   `;
-  
-  // Create the modal header
-  const modalHeader = document.createElement('div');
-  modalHeader.style.cssText = `
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e0e0e0;
-  `;
-  
-  const headerTitle = document.createElement('h2');
-  headerTitle.textContent = 'Page Summary';
-  headerTitle.style.cssText = `
-    margin: 0;
-    font-size: 24px;
-    font-weight: 500;
-  `;
-  
-  const optionsButton = document.createElement('button');
-  optionsButton.textContent = '⚙️';
-  optionsButton.title = 'Settings';
-  optionsButton.style.cssText = `
-    background: none;
+
+  // Create iframe
+  const iframe = document.createElement('iframe');
+  iframe.src = chrome.runtime.getURL('modal.html');
+  iframe.style.cssText = `
+    width: 100%;
+    height: 100%;
     border: none;
-    font-size: 20px;
-    cursor: pointer;
-    margin-right: 16px;
-    color: #555;
+    pointer-events: auto;
   `;
-  optionsButton.addEventListener('click', function() {
-    chrome.runtime.sendMessage({ action: "openOptions" });
-  });
-  
-  const closeButton = document.createElement('button');
-  closeButton.innerHTML = '&times;';
-  closeButton.style.cssText = `
-    background: none;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    color: #333;
-    padding: 0;
-    line-height: 1;
-  `;
-  closeButton.addEventListener('click', function() {
-    document.body.removeChild(modalContainer);
-  });
-  
-  modalHeader.appendChild(headerTitle);
-  modalHeader.appendChild(optionsButton);
-  modalHeader.appendChild(closeButton);
-  
-  // Create the modal content
-  const modalContent = document.createElement('div');
-  modalContent.style.cssText = `
-    padding: 20px;
-    overflow-y: auto;
-    flex: 1;
-  `;
-  
-  // Create summary container
-  const summaryContainer = document.createElement('div');
-  
-  const pageTitle = document.createElement('h3');
-  pageTitle.id = 'page-title';
-  pageTitle.style.cssText = `
-    font-size: 18px;
-    margin-top: 0;
-    margin-bottom: 16px;
-    word-break: break-word;
-    font-weight: 500;
-    line-height: 1.3;
-  `;
-  
-  const summaryText = document.createElement('div');
-  summaryText.id = 'summary-text';
-  summaryText.style.cssText = `
-    line-height: 1.6;
-    color: #333;
-    margin-bottom: 20px;
-  `;
-  
-  summaryContainer.appendChild(pageTitle);
-  summaryContainer.appendChild(summaryText);
-  modalContent.appendChild(summaryContainer);
-  
-  // Create follow-up container
-  const followUpContainer = document.createElement('div');
-  followUpContainer.style.cssText = `
-    margin-top: 20px;
-    padding-top: 10px;
-  `;
-  
-  const followUpMessages = document.createElement('div');
-  followUpMessages.id = 'follow-up-messages';
-  followUpMessages.style.cssText = `
-    max-height: 200px;
-    overflow-y: auto;
-    margin-bottom: 16px;
-  `;
-  
-  const inputContainer = document.createElement('div');
-  inputContainer.style.cssText = `
-    display: flex;
-    border: 1px solid #ddd;
-    border-radius: 24px;
-    overflow: hidden;
-  `;
-  
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.id = 'follow-up-input';
-  input.placeholder = 'Ask a follow-up question...';
-  input.style.cssText = `
-    flex: 1;
-    padding: 12px 16px;
-    border: none;
-    outline: none;
-    font-size: 16px;
-    font-family: 'IBM Plex Sans', sans-serif;
-  `;
-  
-  const sendButton = document.createElement('button');
-  sendButton.id = 'send-question';
-  sendButton.innerHTML = '&#10140;'; // Right arrow character
-  sendButton.style.cssText = `
-    background: none;
-    border: none;
-    padding: 0 16px;
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  `;
-  
-  inputContainer.appendChild(input);
-  inputContainer.appendChild(sendButton);
-  
-  followUpContainer.appendChild(followUpMessages);
-  followUpContainer.appendChild(inputContainer);
-  modalContent.appendChild(followUpContainer);
-  
-  // Assemble the modal
-  modal.appendChild(modalHeader);
-  modal.appendChild(modalContent);
-  modalContainer.appendChild(modal);
-  
-  // Add to the page
+
+  // Add resize handle and iframe to container
+  modalContainer.appendChild(resizeHandle);
+  modalContainer.appendChild(iframe);
   document.body.appendChild(modalContainer);
-  
-  // Add event listener for clicking outside the modal
-  modalContainer.addEventListener('click', function(event) {
-    if (event.target === modalContainer) {
-      document.body.removeChild(modalContainer);
+
+  // Add resize functionality
+  let isResizing = false;
+  let startX;
+  let startWidth;
+
+  resizeHandle.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    startX = e.clientX;
+    startWidth = modalContainer.offsetWidth;
+    
+    // Add overlay to prevent iframe from capturing mouse events during resize
+    const overlay = document.createElement('div');
+    overlay.id = 'quicksummary-resize-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000000;
+      cursor: col-resize;
+    `;
+    document.body.appendChild(overlay);
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+
+    const width = document.documentElement.clientWidth;
+    const newWidth = width - e.clientX;
+    
+    // Limit minimum and maximum width
+    const minWidth = 300;
+    const maxWidth = Math.min(800, width * 0.8);
+    
+    if (newWidth >= minWidth && newWidth <= maxWidth) {
+      modalContainer.style.width = newWidth + 'px';
     }
   });
-  
-  // Generate the summary
-  generateSummary();
-  
-  // Add event listeners for follow-up questions
-  sendButton.addEventListener('click', sendFollowUpQuestion);
-  input.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      sendFollowUpQuestion();
+
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+      const overlay = document.getElementById('quicksummary-resize-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
     }
   });
+
+  // Wait for iframe to load
+  iframe.onload = () => {
+    // Extract main content
+    const content = extractMainContent();
+    
+    // Send content to iframe
+    iframe.contentWindow.postMessage({
+      type: 'content',
+      content: content
+    }, '*');
+  };
+
+  // Listen for messages from iframe
+  window.addEventListener('message', (event) => {
+    if (event.data.type === 'closeModal') {
+      modalContainer.remove();
+    } else if (event.data.type === 'getContent') {
+      // Send content back to iframe
+      event.source.postMessage({
+        type: 'content',
+        content: extractMainContent()
+      }, '*');
+    }
+  });
+}
+
+// Function to extract main content from the page
+function extractMainContent() {
+  // Try to find the main content container
+  const selectors = [
+    'article',
+    'main',
+    '[role="main"]',
+    '.article',
+    '.post',
+    '.content',
+    '#content',
+    '#main',
+    '.main'
+  ];
+
+  let content = '';
+  let title = document.title;
+
+  // Try each selector
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (element) {
+      // Get text content and clean it up
+      content = element.textContent
+        .replace(/\s+/g, ' ')
+        .trim();
+      break;
+    }
+  }
+
+  // If no content found, get all text from body
+  if (!content) {
+    content = document.body.textContent
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  return {
+    title: title,
+    content: content
+  };
 }
 
 // Markdown to HTML formatter function
@@ -261,7 +204,7 @@ function formatMarkdownToHtml(markdownText) {
     .replace(/<\/ul>\s*<ul>/g, '');
 }
 
-// Function to generate the summary using OpenAI
+// Function to generate the summary using selected API provider
 function generateSummary() {
   const pageTitle = document.getElementById('page-title');
   const summaryText = document.getElementById('summary-text');
@@ -276,19 +219,19 @@ function generateSummary() {
   const pageContent = extractMainContent();
   
   // Limit content to avoid token limits (first 4000 characters)
-  const limitedContent = pageContent.slice(0, 4000);
+  const limitedContent = pageContent.content.slice(0, 4000);
   
-  // Get API key and settings from storage
+  // Get API settings from storage
   chrome.storage.sync.get(
-    ['apiKey', 'model', 'summaryLength', 'summaryStyle', 'customPrompt'], 
+    ['apiProvider', 'openai', 'anthropic', 'deepseek', 'summaryLength', 'summaryStyle', 'customPrompt'], 
     function(items) {
-      if (!items.apiKey) {
+      const provider = items.apiProvider || 'openai';
+      const providerSettings = items[provider];
+      
+      if (!providerSettings || !providerSettings.apiKey) {
         const optionsUrl = chrome.runtime.getURL('options.html');
+        summaryText.innerHTML = `Please set your ${provider.toUpperCase()} API key in the extension options. <a href="#" id="open-options">Open Options</a>`;
         
-        // Method 1: Direct link to options (most reliable)
-        summaryText.innerHTML = `Please set your OpenAI API key in the extension options. <a href="#" id="open-options">Open Options</a>`;
-        
-        // Use setTimeout to ensure the element exists
         setTimeout(() => {
           const openOptionsLink = document.getElementById('open-options');
           if (openOptionsLink) {
@@ -364,89 +307,46 @@ function generateSummary() {
         - Use line breaks between paragraphs`;
       }
       
-      // Prepare the API request
-      fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${items.apiKey}`
-        },
-        body: JSON.stringify({
-          model: items.model || 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: `Please summarize the following web page content in about ${wordCount} words. Create a well-structured summary that's easy to read. Use bullet points (not numbered lists) for any lists, clear paragraphs, and simple language:\n\n${limitedContent}`
-            }
-          ]
-        })
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`API request failed with status ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        // Extract the summary from the API response
-        const summary = data.choices[0].message.content;
+      try {
+        // Create API service instance
+        const apiService = new APIService(provider, providerSettings.apiKey, providerSettings.model);
         
-        // Format the markdown to HTML
-        summaryText.innerHTML = formatMarkdownToHtml(summary);
-        
-        // Add some additional styling to the summary elements
-        const summaryContainer = summaryText.parentElement;
-        
-        // Style any lists that were created
-        const lists = summaryContainer.querySelectorAll('ul');
-        lists.forEach(list => {
-          list.style.paddingLeft = '28px';
-          list.style.marginTop = '12px';
-          list.style.marginBottom = '12px';
-        });
-        
-        // Style individual list items
-        const listItems = summaryContainer.querySelectorAll('li');
-        listItems.forEach(item => {
-          item.style.marginBottom = '6px';
-          item.style.paddingLeft = '4px';
-        });
-        
-        // Style headings
-        const headings = summaryContainer.querySelectorAll('h1, h2, h3');
-        headings.forEach(heading => {
-          heading.style.marginTop = '18px';
-          heading.style.marginBottom = '10px';
-          heading.style.color = '#333';
-          
-          if (heading.tagName === 'H1') {
-            heading.style.fontSize = '20px';
-          } else if (heading.tagName === 'H2') {
-            heading.style.fontSize = '18px';
-          } else {
-            heading.style.fontSize = '16px';
+        // Generate summary
+        apiService.generateCompletion([
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: `Please summarize the following web page content in about ${wordCount} words. Create a well-structured summary that's easy to read. Use bullet points (not numbered lists) for any lists, clear paragraphs, and simple language:\n\n${limitedContent}`
           }
+        ])
+        .then(summary => {
+          // Format and cache the summary
+          const formattedSummary = formatMarkdownToHtml(summary);
+          
+          // Cache the summary
+          summaryCache.data = formattedSummary;
+          summaryCache.timestamp = Date.now();
+          summaryCache.url = window.location.href;
+          
+          // Display the summary
+          summaryText.innerHTML = formattedSummary;
+        })
+        .catch(error => {
+          console.error('Error generating summary:', error);
+          summaryText.textContent = `Error generating summary: ${error.message}. Please check your API key or try again later.`;
         });
-        
-        // Add spacing between paragraphs
-        const paragraphs = summaryText.innerHTML.split('<br><br>');
-        if (paragraphs.length > 1) {
-          summaryText.innerHTML = paragraphs.join('<div style="margin-bottom: 14px;"></div>');
-        }
-      })
-      .catch(error => {
-        console.error('Error generating summary:', error);
-        summaryText.textContent = `Error generating summary: ${error.message}. Please check your API key or try again later.`;
-      });
+      } catch (error) {
+        console.error('Error initializing API service:', error);
+        summaryText.textContent = `Error: ${error.message}. Please check your settings and try again.`;
+      }
     }
   );
 }
 
-// Function to handle follow-up questions using OpenAI
+// Function to handle follow-up questions
 function sendFollowUpQuestion() {
   const inputElement = document.getElementById('follow-up-input');
   const question = inputElement.value.trim();
@@ -459,67 +359,48 @@ function sendFollowUpQuestion() {
   // Display user question
   addMessage(question, 'user');
   
-  // Get conversation history for context
-  const messagesContainer = document.getElementById('follow-up-messages');
-  const messageElements = messagesContainer.querySelectorAll('.message');
+  // Get the page content for context
+  const pageContent = extractMainContent();
+  const limitedContent = pageContent.content.slice(0, 4000);
   
-  // Build conversation history (limit to last 5 messages)
-  let history = [];
-  const maxMessages = Math.min(messageElements.length, 5);
-  for (let i = messageElements.length - maxMessages; i < messageElements.length; i++) {
-    const message = messageElements[i];
-    const role = message.classList.contains('user-message') ? 'user' : 'assistant';
-    history.push({
-      role: role,
-      content: message.textContent
-    });
-  }
-  
-  // Get API key from storage
-  chrome.storage.sync.get(['apiKey', 'model'], function(items) {
-    if (!items.apiKey) {
-      addMessage('API key is not set. Please check the extension options.', 'ai');
+  // Get API settings from storage
+  chrome.storage.sync.get(['apiProvider', 'openai', 'anthropic', 'deepseek'], function(items) {
+    const provider = items.apiProvider || 'openai';
+    const providerSettings = items[provider];
+    
+    if (!providerSettings || !providerSettings.apiKey) {
+      addMessage(`Please set your ${provider.toUpperCase()} API key in the extension options.`, 'ai');
       return;
     }
     
-    // Prepare the API request
-    fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${items.apiKey}`
-      },
-      body: JSON.stringify({
-        model: items.model || 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant answering questions about a web page the user is viewing. Keep answers concise and focused on the question. Use markdown formatting for clear responses, with bullet points (never numbered lists), bold text, and structure when appropriate. Always use "-" for lists instead of numbers.'
-          },
-          ...history
-        ]
+    try {
+      // Create API service instance
+      const apiService = new APIService(provider, providerSettings.apiKey, providerSettings.model);
+      
+      // Send question
+      apiService.generateCompletion([
+        {
+          role: 'system',
+          content: `You are a helpful assistant answering questions about a specific article. Your answers must be based ONLY on the content provided in the article. If the information is not present in the article, respond with "I apologize, but that information is not present in the article." Do not use any external knowledge or make assumptions. Keep answers concise and focused on the question.`
+        },
+        {
+          role: 'user',
+          content: `Here is the article content:\n\n${limitedContent}\n\nPlease answer this question based ONLY on the article content: ${question}`
+        }
+      ])
+      .then(answer => {
+        // Format and display the answer
+        const formattedAnswer = formatMarkdownToHtml(answer);
+        addMessage(formattedAnswer, 'ai', true);
       })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      // Extract the answer from the API response
-      const answer = data.choices[0].message.content;
-      
-      // Format the markdown in the answer to HTML
-      const formattedAnswer = formatMarkdownToHtml(answer);
-      
-      // Add the formatted answer
-      addMessage(formattedAnswer, 'ai', true);
-    })
-    .catch(error => {
-      console.error('Error sending question:', error);
-      addMessage(`Error: ${error.message}. Please check your API key or try again later.`, 'ai');
-    });
+      .catch(error => {
+        console.error('Error sending question:', error);
+        addMessage(`Error: ${error.message}. Please check your API key or try again later.`, 'ai');
+      });
+    } catch (error) {
+      console.error('Error initializing API service:', error);
+      addMessage(`Error: ${error.message}. Please check your settings and try again.`, 'ai');
+    }
   });
 }
 
@@ -537,11 +418,13 @@ function addMessage(text, sender, isHTML = false) {
   }
   
   messageElement.style.cssText = `
-    margin-bottom: 12px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    max-width: 80%;
-    ${sender === 'user' ? 'margin-left: auto; background-color: #f0f0f0;' : 'background-color: #f5f7fa;'}
+    padding: 12px 16px;
+    border-radius: 12px;
+    max-width: 85%;
+    ${sender === 'user' 
+      ? 'margin-left: auto; background-color: #007bff; color: white;' 
+      : 'background-color: #f0f0f0; color: #333;'}
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   `;
   
   // Style lists in AI messages
@@ -564,5 +447,10 @@ function addMessage(text, sender, isHTML = false) {
   }
   
   messagesContainer.appendChild(messageElement);
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  
+  // Scroll the modal content instead of the messages container
+  const modalContent = document.querySelector('#quicksummary-modal > div');
+  if (modalContent) {
+    modalContent.scrollTop = modalContent.scrollHeight;
+  }
 }

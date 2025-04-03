@@ -1,89 +1,293 @@
-// Initialize variables
-let pageData = null;
+// Cache for storing summaries
+let summaryCache = {
+  data: null,
+  timestamp: null,
+  url: null
+};
 
-// Listen for messages from the content script
-window.addEventListener('message', function(event) {
-  if (event.data.action === "generateSummary") {
-    pageData = event.data.data;
-    generateSummary(pageData);
+// Store the last content for regenerating summaries
+let lastContent = null;
+
+// Initialize the modal
+document.addEventListener('DOMContentLoaded', () => {
+  // Set up event listeners
+  document.getElementById('close-modal').addEventListener('click', closeModal);
+  document.getElementById('send-question').addEventListener('click', sendFollowUpQuestion);
+  document.getElementById('generate-summary').addEventListener('click', () => {
+    if (lastContent) {
+      // Show loading state
+      document.getElementById('summary-text').innerHTML = `
+        <div class="loading">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-spin">
+            <path d="M12 4.75V6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M17.1266 6.87347L16.0659 7.93413" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M19.25 12H17.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M17.1266 17.1265L16.0659 16.0659" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 19.25V17.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M6.87347 17.1265L7.93413 16.0659" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4.75 12H6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M6.87347 6.87347L7.93413 7.93413" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span style="margin-left: 12px">Generating new summary...</span>
+        </div>
+      `;
+      
+      // Clear the cache
+      summaryCache = {
+        data: null,
+        timestamp: null,
+        url: null
+      };
+      
+      // Generate new summary
+      generateSummary(lastContent);
+    }
+  });
+  document.getElementById('follow-up-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      sendFollowUpQuestion();
+    }
+  });
+  document.getElementById('settings-button').addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'openOptions' });
+  });
+
+  // Listen for messages from the content script
+  window.addEventListener('message', (event) => {
+    if (event.data.type === 'content') {
+      lastContent = event.data.content;
+      loadOrGenerateSummary(event.data.content);
+    }
+  });
+});
+
+// Close the modal
+async function closeModal() {
+  // Save the current summary to storage before closing
+  if (summaryCache.data) {
+    const key = `summary_${window.location.href}`;
+    await chrome.storage.local.set({
+      [key]: summaryCache
+    });
   }
-});
-
-// Close button event listener
-document.getElementById('close-modal').addEventListener('click', function() {
-  window.parent.postMessage({ action: "closeModal" }, "*");
-});
-
-// Send question button event listener
-document.getElementById('send-question').addEventListener('click', function() {
-  sendFollowUpQuestion();
-});
-
-// Enter key event listener for the input field
-document.getElementById('follow-up-input').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') {
-    sendFollowUpQuestion();
-  }
-});
-
-// Function to generate the initial summary
-function generateSummary(data) {
-  // Set the page title
-  document.getElementById('page-title').textContent = 
-    `Summary of ${data.title || data.url}`;
-  
-  // Display loading state
-  document.getElementById('summary-text').textContent = "Generating summary...";
-  
-  // In a real implementation, you would call an AI service here
-  // For this demo, we'll simulate an API call with a timeout
-  setTimeout(() => {
-    // Sample summary - in a real implementation, this would come from an AI service
-    const sampleSummary = `This webpage discusses the importance of AI-powered summarization tools for improving productivity and information retention. It highlights how such tools can help users quickly understand the main points of articles, research papers, and other web content without having to read everything in detail. The article specifically mentions benefits for students, researchers, and busy professionals who need to process large amounts of information efficiently.
-
-The page also covers the technical aspects of how modern summarization algorithms work, explaining the difference between extractive summarization (which pulls out important sentences) and abstractive summarization (which generates new text to capture the essence of the content). It evaluates the strengths and limitations of current AI summarization technologies and discusses future improvements.`;
-    
-    document.getElementById('summary-text').textContent = sampleSummary;
-  }, 1500);
+  window.parent.postMessage({ type: 'closeModal' }, '*');
 }
 
-// Function to handle follow-up questions
-function sendFollowUpQuestion() {
-  const inputElement = document.getElementById('follow-up-input');
-  const question = inputElement.value.trim();
+// Load existing summary or generate new one
+async function loadOrGenerateSummary(content) {
+  try {
+    // Show loading state
+    document.getElementById('summary-text').innerHTML = `
+      <div class="loading">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-spin">
+          <path d="M12 4.75V6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M17.1266 6.87347L16.0659 7.93413" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19.25 12H17.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M17.1266 17.1265L16.0659 16.0659" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 19.25V17.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6.87347 17.1265L7.93413 16.0659" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4.75 12H6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6.87347 6.87347L7.93413 7.93413" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span style="margin-left: 12px">Loading summary...</span>
+      </div>
+    `;
+
+    // Check for cached summary in storage
+    const key = `summary_${window.location.href}`;
+    const result = await chrome.storage.local.get(key);
+    const cached = result[key];
+
+    if (cached && cached.url === window.location.href) {
+      // Use cached summary
+      summaryCache = cached;
+      document.getElementById('summary-text').innerHTML = formatMarkdownToHtml(cached.data);
+    } else {
+      // Generate new summary
+      generateSummary(content);
+    }
+
+  } catch (error) {
+    console.error('Error loading summary:', error);
+    document.getElementById('summary-text').innerHTML = `
+      <div class="error-message">
+        Error loading summary: ${error.message}
+      </div>
+    `;
+  }
+}
+
+// Generate summary using the API service
+async function generateSummary(content) {
+  try {
+    // Get API settings from storage
+    const settings = await chrome.storage.sync.get([
+      'apiProvider',
+      'openai',
+      'anthropic',
+      'deepseek',
+      'gemini',
+      'summaryLength',
+      'summaryStyle',
+      'customPrompt'
+    ]);
+
+    // Check if API key is set
+    const apiKey = settings[settings.apiProvider]?.apiKey;
+    if (!apiKey) {
+      document.getElementById('summary-text').innerHTML = `
+        <div class="error-message">
+          Please set your API key in the extension options.
+          <br><br>
+          <a href="chrome-extension://${chrome.runtime.id}/options.html" target="_blank">Open Options</a>
+        </div>
+      `;
+      return;
+    }
+
+    // Build the system prompt
+    const wordCount = settings.summaryLength || 'medium';
+    const style = settings.summaryStyle || 'concise';
+    const customPrompt = settings.customPrompt || '';
+    
+    const systemPrompt = customPrompt || `
+      You are an expert summarizer that creates well-formatted, easy-to-read summaries.
+      Format your summaries with:
+      - Clear paragraphs with line breaks between them
+      - Bullet points for key items and lists (always use bullet points with "-" instead of numbered lists)
+      - Headings when appropriate to organize information
+      - Bold text for important terms or concepts
+      
+      Please provide a ${wordCount} summary in a ${style} style.
+      Keep your language clear, concise, and engaging.
+      Focus on extracting the most important information while maintaining readability.
+    `;
+
+    // Create messages array for the API
+    const messages = [
+      {
+        role: 'system',
+        content: systemPrompt
+      },
+      {
+        role: 'user',
+        content: `Please summarize the following text:\n\n${content.content}`
+      }
+    ];
+
+    // Create API service instance with model selection
+    const providerSettings = settings[settings.apiProvider];
+    const apiService = new APIService(
+      settings.apiProvider, 
+      apiKey,
+      providerSettings?.model
+    );
+    
+    // Generate summary
+    const response = await apiService.generateCompletion(messages);
+    
+    // Format and display the summary
+    const formattedSummary = formatMarkdownToHtml(response);
+    document.getElementById('summary-text').innerHTML = formattedSummary;
+    
+    // Cache the summary
+    summaryCache = {
+      data: response,
+      timestamp: Date.now(),
+      url: window.location.href
+    };
+
+  } catch (error) {
+    console.error('Error generating summary:', error);
+    document.getElementById('summary-text').innerHTML = `
+      <div class="error-message">
+        Error generating summary: ${error.message}
+      </div>
+    `;
+  }
+}
+
+// Send follow-up question
+async function sendFollowUpQuestion() {
+  const input = document.getElementById('follow-up-input');
+  const question = input.value.trim();
   
   if (!question) return;
   
-  // Clear the input
-  inputElement.value = '';
+  // Add user question to the chat
+  addMessageToChat('user', question);
+  input.value = '';
   
-  // Display user question
-  addMessage(question, 'user');
-  
-  // In a real implementation, you would send this to an AI service
-  // For this demo, we'll simulate a response
-  setTimeout(() => {
-    // Sample responses - in a real implementation, these would come from an AI service
-    const responses = [
-      "The article mentions that extractive summarization works by identifying and extracting key sentences, while abstractive summarization generates entirely new text to capture the main ideas.",
-      "According to the page, the main benefits are time-saving, improved comprehension, and better information retention, especially for students and researchers.",
-      "The limitations discussed include occasional misinterpretation of context, difficulties with highly technical content, and sometimes missing important nuances in the original text."
-    ];
+  try {
+    // Get API settings from storage
+    const settings = await chrome.storage.sync.get([
+      'apiProvider',
+      'openai',
+      'anthropic',
+      'deepseek',
+      'gemini'
+    ]);
+
+    // Check if API key is set
+    const apiKey = settings[settings.apiProvider]?.apiKey;
+    if (!apiKey) {
+      addMessageToChat('assistant', 'Please set your API key in the extension options.');
+      return;
+    }
+
+    // Create API service instance with model selection
+    const providerSettings = settings[settings.apiProvider];
+    const apiService = new APIService(
+      settings.apiProvider,
+      apiKey,
+      providerSettings?.model
+    );
     
-    // Pick a random response for the demo
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    addMessage(randomResponse, 'ai');
-  }, 1000);
+    // Create messages array for the API
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a helpful assistant answering questions about a specific article. 
+        Your answers must be based ONLY on the content provided in the article. 
+        If the information is not present in the article, respond with "I apologize, but that information is not present in the article." 
+        Do not use any external knowledge or make assumptions. 
+        Keep answers concise and focused on the question.`
+      },
+      {
+        role: 'user',
+        content: `Here is the article content:\n\n${lastContent.content}\n\nPlease answer this question based ONLY on the article content: ${question}`
+      }
+    ];
+
+    // Generate response
+    const response = await apiService.generateCompletion(messages);
+    
+    // Add response to the chat
+    addMessageToChat('assistant', response);
+
+  } catch (error) {
+    console.error('Error sending follow-up question:', error);
+    addMessageToChat('assistant', `Error: ${error.message}`);
+  }
 }
 
-// Function to add a message to the conversation
-function addMessage(text, sender) {
+// Add a message to the chat
+function addMessageToChat(role, content) {
   const messagesContainer = document.getElementById('follow-up-messages');
-  const messageElement = document.createElement('div');
-  
-  messageElement.className = `message ${sender}-message`;
-  messageElement.textContent = text;
-  
-  messagesContainer.appendChild(messageElement);
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${role}-message`;
+  messageDiv.innerHTML = formatMarkdownToHtml(content);
+  messagesContainer.appendChild(messageDiv);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Format markdown to HTML
+function formatMarkdownToHtml(text) {
+  // Basic markdown formatting
+  return text
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>');
 }

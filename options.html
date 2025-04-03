@@ -75,95 +75,203 @@
       padding-left: 20px;
     }
     /* Add to the style section in options.html */
-textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
-  font-family: inherit;
-  resize: vertical;
-}
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      font-family: inherit;
+      resize: vertical;
+    }
 
-.secondary-button {
-  background-color: #f1f3f4;
-  color: #202124;
-  border: 1px solid #dadce0;
-  margin-top: 8px;
-}
+    .secondary-button {
+      background-color: #f1f3f4;
+      color: #202124;
+      border: 1px solid #dadce0;
+      margin-top: 8px;
+    }
 
-.secondary-button:hover {
-  background-color: #e8eaed;
-}
+    .secondary-button:hover {
+      background-color: #e8eaed;
+    }
 
-.tooltip {
-  cursor: help;
-  color: #4285f4;
-}
+    .tooltip {
+      cursor: help;
+      color: #4285f4;
+    }
 
-.header-with-tabs {
-  display: flex;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 20px;
-}
+    .header-with-tabs {
+      display: flex;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 20px;
+    }
 
-.tab {
-  padding: 10px 16px;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
+    .tab {
+      padding: 10px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
 
-.tab.active {
-  border-bottom: 2px solid #4285f4;
-  color: #4285f4;
-}
+    .tab.active {
+      border-bottom: 2px solid #4285f4;
+      color: #4285f4;
+    }
 
-.tab-content {
-  display: none;
-}
+    .tab-content {
+      display: none;
+    }
 
-.tab-content.active {
-  display: block;
-}
+    .tab-content.active {
+      display: block;
+    }
 
-.form-row {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
-}
+    .form-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
 
-.form-row .form-group {
-  flex: 1;
-  margin-bottom: 0;
-}
+    .form-row .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .api-key-group {
+      margin-bottom: 24px;
+      padding: 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+    }
+    
+    .api-key-group h3 {
+      margin-top: 0;
+      margin-bottom: 16px;
+      font-size: 16px;
+      color: #333;
+    }
+    
+    .provider-section {
+      display: none;
+    }
+    
+    .provider-section.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
   <h1>QuickSummary Options</h1>
   
-  <div class="instruction">
-    <h2>How to Get Your OpenAI API Key</h2>
-    <ol>
-      <li>Go to <a href="https://platform.openai.com/account/api-keys" target="_blank">OpenAI API Keys</a></li>
-      <li>Sign in or create an account</li>
-      <li>Create a new API key</li>
-      <li>Copy the key and paste it below</li>
-    </ol>
-  </div>
-  
   <div class="form-group">
-    <label for="apiKey">OpenAI API Key:</label>
-    <input type="text" id="apiKey" placeholder="sk-...">
-  </div>
-  
-  <div class="form-group">
-    <label for="model">OpenAI Model:</label>
-    <select id="model">
-      <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Faster, cheaper)</option>
-      <option value="gpt-4">GPT-4 (More accurate, slower)</option>
-      <option value="gpt-4-turbo">GPT-4 Turbo (Balance of speed and quality)</option>
+    <label for="apiProvider">API Provider:</label>
+    <select id="apiProvider">
+      <option value="openai">OpenAI (GPT-3.5/4)</option>
+      <option value="gemini">Google (Gemini)</option>
+      <option value="anthropic">Anthropic (Claude)</option>
+      <option value="deepseek">DeepSeek</option>
     </select>
   </div>
+  
+  <!-- OpenAI Section -->
+  <div id="openai-section" class="provider-section api-key-group">
+    <h3>OpenAI Settings</h3>
+    <div class="form-group">
+      <label for="openaiKey">API Key:</label>
+      <input type="text" id="openaiKey" placeholder="sk-...">
+    </div>
+    <div class="form-group">
+      <label for="openaiModel">Model:</label>
+      <select id="openaiModel">
+        <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Faster, cheaper)</option>
+        <option value="gpt-4">GPT-4 (More accurate, slower)</option>
+        <option value="gpt-4-turbo">GPT-4 Turbo (Balance of speed and quality)</option>
+      </select>
+    </div>
+    <div class="instruction">
+      <ol>
+        <li>Go to <a href="https://platform.openai.com/account/api-keys" target="_blank">OpenAI API Keys</a></li>
+        <li>Sign in or create an account</li>
+        <li>Create a new API key</li>
+        <li>Copy the key and paste it above</li>
+      </ol>
+    </div>
+  </div>
+  
+  <!-- Gemini Section -->
+  <div id="gemini-section" class="provider-section api-key-group">
+    <h3>Google Gemini Settings</h3>
+    <div class="form-group">
+      <label for="geminiKey">API Key:</label>
+      <input type="text" id="geminiKey" placeholder="AIza...">
+    </div>
+    <div class="form-group">
+      <label for="geminiModel">Model:</label>
+      <select id="geminiModel">
+        <option value="gemini-pro">Gemini Pro (Text generation)</option>
+        <option value="gemini-pro-vision">Gemini Pro Vision (Text & Image)</option>
+      </select>
+    </div>
+    <div class="instruction">
+      <ol>
+        <li>Go to <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></li>
+        <li>Sign in with your Google account</li>
+        <li>Click "Create API key" if you don't have one</li>
+        <li>Copy the API key and paste it above</li>
+      </ol>
+    </div>
+  </div>
+  
+  <!-- Anthropic Section -->
+  <div id="anthropic-section" class="provider-section api-key-group">
+    <h3>Anthropic Settings</h3>
+    <div class="form-group">
+      <label for="anthropicKey">API Key:</label>
+      <input type="text" id="anthropicKey" placeholder="sk-ant-...">
+    </div>
+    <div class="form-group">
+      <label for="anthropicModel">Model:</label>
+      <select id="anthropicModel">
+        <option value="claude-3-opus">Claude 3 Opus (Most capable)</option>
+        <option value="claude-3-sonnet">Claude 3 Sonnet (Balanced)</option>
+        <option value="claude-3-haiku">Claude 3 Haiku (Fastest)</option>
+      </select>
+    </div>
+    <div class="instruction">
+      <ol>
+        <li>Go to <a href="https://console.anthropic.com/account/keys" target="_blank">Anthropic Console</a></li>
+        <li>Sign in or create an account</li>
+        <li>Create a new API key</li>
+        <li>Copy the key and paste it above</li>
+      </ol>
+    </div>
+  </div>
+  
+  <!-- DeepSeek Section -->
+  <div id="deepseek-section" class="provider-section api-key-group">
+    <h3>DeepSeek Settings</h3>
+    <div class="form-group">
+      <label for="deepseekKey">API Key:</label>
+      <input type="text" id="deepseekKey" placeholder="...">
+    </div>
+    <div class="form-group">
+      <label for="deepseekModel">Model:</label>
+      <select id="deepseekModel">
+        <option value="deepseek-chat">DeepSeek Chat</option>
+        <option value="deepseek-coder">DeepSeek Coder</option>
+      </select>
+    </div>
+    <div class="instruction">
+      <ol>
+        <li>Go to <a href="https://platform.deepseek.com/" target="_blank">DeepSeek Platform</a></li>
+        <li>Sign in or create an account</li>
+        <li>Create a new API key</li>
+        <li>Copy the key and paste it above</li>
+      </ol>
+    </div>
+  </div>
+  
   <div class="form-group">
     <label for="summaryLength">Summary Length:</label>
     <select id="summaryLength">
@@ -195,6 +303,7 @@ textarea {
   <button id="save">Save Settings</button>
   <div id="status" class="status"></div>
   
+  <script src="api-services.js"></script>
   <script src="options.js"></script>
 </body>
 </html>
