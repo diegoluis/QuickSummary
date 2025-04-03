@@ -30,6 +30,9 @@ body {
   padding: 12px 16px;
   background-color: #ffffff;
   border-bottom: 1px solid #e9ecef;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .header-left {
@@ -153,6 +156,23 @@ body {
   background-color: #f8f9fa;
   color: #212529;
   margin-right: auto;
+}
+
+.loading-message {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+.loading-message .loading {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  font-size: 14px;
+}
+
+.loading-message svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Input container */

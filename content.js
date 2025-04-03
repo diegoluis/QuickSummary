@@ -29,7 +29,7 @@ function showSummaryModal() {
     right: 0;
     width: 25vw;
     height: 100vh;
-    z-index: 999999;
+    z-index: 2147483647;
     pointer-events: none;
     box-shadow: -1px 0 0 #e9ecef;
   `;
@@ -117,10 +117,11 @@ function showSummaryModal() {
     // Extract main content
     const content = extractMainContent();
     
-    // Send content to iframe
+    // Send content and URL to iframe
     iframe.contentWindow.postMessage({
       type: 'content',
-      content: content
+      content: content,
+      url: window.location.href
     }, '*');
   };
 
